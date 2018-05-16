@@ -103,8 +103,6 @@ class _PackageManager(object):
         invocation += args
         return invocation
 
-
-
     @traceLog()
     def execute(self, *args, **kwargs):
         self.plugins.call_hooks("preyum")
@@ -160,10 +158,9 @@ class _PackageManager(object):
     def builddep(self, *args, **kwargs):
         # call dnf builddep for microdnf
         if pm == 'microdnf':
-          return self.execute('dnf builddep', returnOutput=1, *args)
+            return self.execute('dnf builddep', returnOutput=1, *args)
         else:
-          return self.execute('builddep', returnOutput=1, *args)
-
+            return self.execute('builddep', returnOutput=1, *args)
 
     @traceLog()
     def copy_gpg_keys(self):
@@ -354,7 +351,8 @@ class Dnf(_PackageManager):
                     raise BuildError("builddep command missing.\nPlease install package dnf-plugins-core.")
             raise
 
-#class for microdnf
+
+# class for microdnf
 class MicroDnf(_PackageManager):
     name = 'microdnf'
 
@@ -372,7 +370,7 @@ class MicroDnf(_PackageManager):
         if 'microdnf_builddep_opts' not in self.config:
             self.config['microdnf_builddep_opts'] = self.config['yum_builddep_opts']
         if 'microdnf_common_opts' not in self.config:
-         self.config['microdnf_common_opts'] = self.config['yum_common_opts'] + ['--disableplugin=local',
+            self.config['microdnf_common_opts'] = self.config['yum_common_opts'] + ['--disableplugin=local',
                                                                                  '--setopt=deltarpm=False']
         return super(MicroDnf, self).build_invocation(*args)
 
@@ -391,7 +389,6 @@ class MicroDnf(_PackageManager):
         with open(dnfconf_path, 'w+') as dnfconf_file:
             dnfconf_file.write(config_content)
 
-
     def builddep(self, *pkgs, **kwargs):
         try:
             super(MicroDnf, self).builddep(*pkgs, **kwargs)
@@ -400,5 +397,3 @@ class MicroDnf(_PackageManager):
                 if 'no such command: builddep' in line.lower():
                     raise BuildError("builddep command missing.\nPlease install package dnf-plugins-core.")
             raise
-
-

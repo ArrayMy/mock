@@ -57,8 +57,8 @@ class PackageState(object):
                         chrootpath, repoquery_avail_opts, out_file)
                 # Installroot runs with dnf when selecting microdnf
                 elif self.buildroot.config['package_manager'] == 'microdnf':
-                      cmd = "/usr/bin/dnf --installroot={0} repoquery -c {0}/etc/microdnf/microdnf.conf {1} > {2}".format(
-                        chrootpath, repoquery_avail_opts, out_file)
+                    cmd = "/usr/bin/dnf --installroot={0} repoquery -c {0}/etc/microdnf/microdnf.conf {1} > {2}".\
+                        format(chrootpath, repoquery_avail_opts, out_file)
                 else:
                     cmd = "/usr/bin/repoquery --installroot={0} -c {0}/etc/yum.conf {1} > {2}".format(
                         chrootpath, repoquery_avail_opts, out_file)
