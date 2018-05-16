@@ -413,6 +413,8 @@ class Buildroot(object):
                 'tmp/ccache',
                 'var/tmp',
                 'etc/dnf',
+                # After fixing the bug it will be useful
+                'etc/microdnf',
                 'etc/yum.repos.d',
                 'etc/yum',
                 'proc',
@@ -516,6 +518,8 @@ class Buildroot(object):
         for item in [self.make_chroot_path('etc', 'fstab'),
                      self.make_chroot_path('etc', 'yum', 'yum.conf'),
                      self.make_chroot_path('etc', 'dnf', 'dnf.conf'),
+                     # After fixing the bug it will be useful
+                     self.make_chroot_path('etc', 'microdnf', 'microdnf.conf'),
                      self.make_chroot_path('var', 'log', 'yum.log')]:
             util.touch(item)
         short_yum_confpath = self.make_chroot_path('etc', 'yum.conf')

@@ -19,6 +19,10 @@ def package_manager(config_opts, buildroot, plugins, bootstrap_buildroot=None):
     pm = config_opts.get('package_manager', 'yum')
     if pm == 'yum':
         return Yum(config_opts, buildroot, plugins, bootstrap_buildroot)
+    # Informations and call class for microdnf
+    if pm == 'microdnf':
+            print('When using MicroDnf, it is necessary to builddep and installroot using Dnf!')
+            return MicroDnf(config_opts, buildroot, plugins, bootstrap_buildroot)
     elif pm == 'dnf':
         if os.path.isfile(config_opts['dnf_command']) or bootstrap_buildroot is not None:
             return Dnf(config_opts, buildroot, plugins, bootstrap_buildroot)
@@ -78,9 +82,13 @@ class _PackageManager(object):
             else:
                 invocation = [self.command]
                 common_opts = self.config[self.name + '_common_opts']
+        # Condition for using the dnf command at --installroot for microdnf
         else:
-            invocation = [self.command]
-            common_opts = self.config[self.name + '_common_opts']
+            if self.command == "/usr/bin/microdnf":
+                invocation = ['/usr/bin/dnf']
+            else:
+                invocation = [self.command]
+        common_opts = self.config[self.name + '_common_opts']
         invocation += ['--installroot', self.buildroot.make_chroot_path('')]
         if cmd in ['upgrade', 'update', 'module']:
             invocation += ['-y']
@@ -94,6 +102,8 @@ class _PackageManager(object):
         invocation += common_opts
         invocation += args
         return invocation
+
+
 
     @traceLog()
     def execute(self, *args, **kwargs):
@@ -148,7 +158,12 @@ class _PackageManager(object):
     # pylint: disable=unused-argument
     @traceLog()
     def builddep(self, *args, **kwargs):
-        return self.execute('builddep', returnOutput=1, *args)
+        # call dnf builddep for microdnf
+        if pm == 'microdnf':
+          return self.execute('dnf builddep', returnOutput=1, *args)
+        else:
+          return self.execute('builddep', returnOutput=1, *args)
+
 
     @traceLog()
     def copy_gpg_keys(self):
@@ -338,3 +353,52 @@ class Dnf(_PackageManager):
                 if 'no such command: builddep' in line.lower():
                     raise BuildError("builddep command missing.\nPlease install package dnf-plugins-core.")
             raise
+
+#class for microdnf
+class MicroDnf(_PackageManager):
+    name = 'microdnf'
+
+    def __init__(self, config, buildroot, plugins, bootstrap_buildroot):
+        super(MicroDnf, self).__init__(config, buildroot, plugins, bootstrap_buildroot)
+        self.command = config['microdnf_command']
+        self.install_command = config['microdnf_install_command']
+        self.builddep_command = [self.command, 'builddep']
+        if bootstrap_buildroot is None:
+            self._check_command()
+        self.resolvedep_command = [self.command, 'repoquery', '--resolve', '--requires']
+
+    @traceLog()
+    def build_invocation(self, *args):
+        if 'microdnf_builddep_opts' not in self.config:
+            self.config['microdnf_builddep_opts'] = self.config['yum_builddep_opts']
+        if 'microdnf_common_opts' not in self.config:
+         self.config['microdnf_common_opts'] = self.config['yum_common_opts'] + ['--disableplugin=local',
+                                                                                 '--setopt=deltarpm=False']
+        return super(MicroDnf, self).build_invocation(*args)
+
+    @traceLog()
+    def initialize_config(self):
+        if 'microdnf.conf' in self.config:
+            config_content = self.config['microdnf.conf']
+        else:
+            config_content = self.config['yum.conf']
+            config_content = self.replace_in_config(config_content)
+        check_yum_config(config_content, self.buildroot.root_log)
+        util.mkdirIfAbsent(self.buildroot.make_chroot_path('etc', 'microdnf'))
+        # Bug in microdnf , microdnf takes the repository resources from the same location as dnf
+        # After fix, set new general path
+        dnfconf_path = self.buildroot.make_chroot_path('etc', 'dnf', 'dnf.conf')
+        with open(dnfconf_path, 'w+') as dnfconf_file:
+            dnfconf_file.write(config_content)
+
+
+    def builddep(self, *pkgs, **kwargs):
+        try:
+            super(MicroDnf, self).builddep(*pkgs, **kwargs)
+        except Error as e:
+            for i, line in enumerate(e.msg.split('\n')):
+                if 'no such command: builddep' in line.lower():
+                    raise BuildError("builddep command missing.\nPlease install package dnf-plugins-core.")
+            raise
+
+
